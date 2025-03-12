@@ -1146,8 +1146,8 @@ class GroupAttention(nn.Module):
         self.num_heads = num_heads 
         head_dim = dim // num_heads
         self.scale = qk_scale or head_dim ** -0.5
-        # self.pe = nn.Parameter(torch.randn(1,64,256))
-        self.pe = nn.Parameter(torch.randn(1,1024,256))
+        self.pe = nn.Parameter(torch.randn(1,64,256))
+        # self.pe = nn.Parameter(torch.randn(1,1024,256))
         self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
         self.attn_drop = nn.Dropout(attn_drop)
         self.proj = nn.Linear(dim, dim)
