@@ -165,6 +165,10 @@ class JSCCOFDMModel(BaseModel):
             self.model_names = ['E', 'G']
         if self.opt.is_t:
             self.model_names = ['E', 'G','T']
+        if self.opt.is_c:
+            self.model_names = ['E', 'G','C']
+        if self.opt.is_lstm:
+            self.model_names = ['E', 'G','LSTM']
 
         if self.opt.feedforward in ['EXPLICIT-RES']:
             self.model_names += ['S1', 'S2']
@@ -238,7 +242,11 @@ class JSCCOFDMModel(BaseModel):
             dim_feedforward = 128  # 前馈网络的维度
             
             max_seq_length = opt.S*3  # 假设您的序列长度为S
-            if self.opt.is_t :
+            if self.opt.is_c :
+                self.netC = networks.init_net(networks.DeepCNN(opt.S),gpu_ids=opt.gpu_ids,init_type=opt.init_type)
+            elif self.opt.is_lstm:
+                self.netLSTM = networks.init_net(networks.HighPerfLSTM(),gpu_ids=opt.gpu_ids,init_type=opt.init_type)
+            elif self.opt.is_t :
                 # self.netT = networks.init_net(networks.TransformerModel(input_size,opt.M*4, nhead, num_encoder_layers, dim_feedforward, max_seq_length),gpu_ids=opt.gpu_ids,init_type=opt.init_type)
                 
                 self.netT = networks.init_net(networks.TransformerModel(input_size,d_model, nhead, num_encoder_layers, dim_feedforward, max_seq_length),gpu_ids=opt.gpu_ids,init_type=opt.init_type)
@@ -284,7 +292,7 @@ class JSCCOFDMModel(BaseModel):
         self.real_A = image.clone().to(self.device)
         self.real_B = image.clone().to(self.device)
         
-    def forward(self):
+    def forward(self,input):
         
         N = self.real_A.shape[0]
         
@@ -634,10 +642,13 @@ class JSCCOFDMModel(BaseModel):
                     r2 = torch.cat((r2[:,:,:,:self.opt.N_pilot].repeat(1,1,1,int(self.opt.M/self.opt.N_pilot)),r2[:,:,:,self.opt.N_pilot:].repeat(1,1,1,int(self.opt.M/self.opt.N_pilot))),-1)
 
                     rnn_input = torch.cat((r3, r1, r2), 2).contiguous().view(N, self.opt.S*3,self.opt.M*2).float()
-
-                if self.opt.is_t :
+                if self.opt.is_c :
+                    self.rnn_output = self.netC(rnn_input)
+                elif self.opt.is_t :
 
                     self.rnn_output = self.netT(rnn_input)
+                elif self.opt.is_lstm:
+                    self.rnn_output = self.netLSTM(rnn_input)
                 else:
 
                     self.rnn_output = rnn_input
@@ -647,6 +658,9 @@ class JSCCOFDMModel(BaseModel):
                 if self.opt.is_pm:
                     dec_in = self.rnn_output.contiguous().view(N, self.opt.P,self.opt.S+self.opt.N_pilot*2,self.opt.M,2)[:,:,:self.opt.S,:,:].contiguous()
                 else:
+                    # if self.opt.is_c or self.opt.is_lstm:
+                    #     dec_in = self.rnn_output.contiguous().view(N, self.opt.P,self.opt.S,self.opt.M,2).contiguous()
+                    # else:
                     dec_in = self.rnn_output.contiguous().view(N, self.opt.P,self.opt.S*3,self.opt.M,2)[:,:,:self.opt.S,:,:].contiguous()
                 # N = self.opt.batch_size
                 # 

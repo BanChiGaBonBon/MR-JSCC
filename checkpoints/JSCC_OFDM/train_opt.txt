@@ -6,19 +6,19 @@
                         I: 1                             
                         K: 8                             	[default: 16]
                         L: 6                             	[default: 8]
-                        M: 256                           	[default: 64]
-                  N_pilot: 2                             
+                        M: 30                            	[default: 64]
+                  N_pilot: 30                            	[default: 2]
                         P: 1                             
-                        S: 30                            	[default: 6]
+                        S: 16                            	[default: 6]
                       SNR: 10.0                          	[default: 20.0]
                         V: 0.0                           
                activation: sigmoid                       
-               batch_size: 64                            	[default: 256]
+               batch_size: 256                           
                     beta1: 0.5                           
           checkpoints_dir: ./checkpoints                 
            continue_train: False                         
-                  d_model: 128                           	[default: 64]
-             dataset_mode: CelebA                        	[default: CIFAR10]
+                  d_model: 64                            
+             dataset_mode: CIFAR10                       
                     decay: 4                             
               display_env: C6SNR5_NotNG                  
              display_freq: 50                            
@@ -29,7 +29,7 @@
           display_winsize: 256                           
                     epoch: latest                        
               epoch_count: 1                             
-              feedforward: EXPLICIT-EQ                   
+              feedforward: EXPLICIT-CE-EQ                	[default: EXPLICIT-EQ]
                       fig:                               
              first_kernel: 5                             
                  gan_mode: none                          
@@ -39,14 +39,16 @@
                  input_nc: 3                             
                   isTrain: True                          	[default: None]
                   is_Feat: 1                             
+                     is_c: False                         
                   is_clip: False                         
                     is_cm: True                          	[default: False]
               is_feedback: False                         
-                    is_ga: True                          	[default: False]
+                    is_ga: False                         
+                  is_lstm: False                         
                     is_pb: False                         
                     is_pm: False                         
               is_random_v: False                         
-                     is_t: True                          	[default: False]
+                     is_t: False                         
              label_smooth: 1                             
                 lambda_L2: 128                           
                 lambda_ce: 10                            
@@ -62,11 +64,11 @@
                   max_ngf: 256                           
                       mod: OFDM                          
                     model: JSCCOFDM                      
-               modulation: OFDM                          	[default: OTFS]
+               modulation: OTFS                          
                  n_blocks: 2                             
              n_downsample: 2                             
                  n_epochs: 50                            	[default: 200]
-           n_epochs_decay: 450                           	[default: 200]
+           n_epochs_decay: 600                           	[default: 200]
                n_layers_D: 3                             
                      name: JSCC_OFDM                     
                       ndf: 64                            
@@ -91,11 +93,11 @@
          save_latest_freq: 5000                          
            serial_batches: False                         
                    suffix:                               
-                    tname: 1225s16m30gat150              	[default: train]
+                    tname: 316s16m30ceeqotfscm           	[default: train]
          update_html_freq: 100                           
                     v_max: 500                           
-                    v_min: 150                           	[default: 0]
-                  v_range: 150                           	[default: 0]
+                    v_min: 0                             
+                  v_range: 50                            	[default: 0]
                    v_step: 0                             
                   verbose: False                         
 ----------------- End -------------------

@@ -1191,3 +1191,230 @@ class Mlp(nn.Module):
         x = self.fc2(x)
         x = self.drop(x)
         return x
+    
+class SimpleCNN(nn.Module):
+    def __init__(self, s):
+        super(SimpleCNN, self).__init__()
+        # 使用1x1卷积将通道数从s*3压缩到s
+
+        self.net = [nn.Conv1d(in_channels=s*3, out_channels=s*3, kernel_size=1),
+                    nn.LeakyReLU(0.2, True),
+                    nn.Conv1d(in_channels=s*3, out_channels=s*3, kernel_size=1)]
+                    
+        self.net = nn.Sequential(*self.net)
+    
+    def forward(self, x):
+        # 输入x的形状应为(batch_size, s*3, m)
+        # 经过卷积后输出形状为(batch_size, s, m)
+        return self.net(x)
+    
+class LSTM(nn.Module):
+    def __init__(self, s):
+        super().__init__()
+        self.lstm = nn.LSTM(
+            input_size = s*3,  # 输入特征维度
+            hidden_size = s*3, # 保持与输入特征维度相同
+            batch_first = True
+        )
+    
+    def forward(self, x):
+        # 原始输入维度: (b, s*3, m)
+        x = x.permute(0, 2, 1)  # 转换为 (b, m, s*3)
+        output, _ = self.lstm(x)  # 输出维度 (b, m, s*3)
+        return output.permute(0, 2, 1)  # 还原为 (b, s*3, m)
+
+class DeepCNN(nn.Module):
+    def __init__(self, s):
+        super().__init__()
+        self.s = s
+        self.net = nn.Sequential(
+            # 第一级扩展
+            nn.Conv1d(s*3, s*12, kernel_size=3, padding=1),  # 参数量: (s*3 * s*6 *3) + s*6 = 18s²+6s
+            nn.Conv1d(s*12, s*18, kernel_size=3, padding=1),
+            nn.BatchNorm1d(s*18),                            # 参数: 2*s*6
+            nn.ReLU(),
+            
+            # 第二级压缩
+            nn.Conv1d(s*18, s*12, kernel_size=1),             # 参数: (s*6 * s*3 *1) + s*3 = 18s²+3s
+            nn.Conv1d(s*12, s*6, kernel_size=1),
+            nn.BatchNorm1d(s*6),                            # 参数: 2*s*3
+            
+            # 残差块
+            ResidualBlock(s*6),                             # 自定义模块，参数见下方
+            
+            # 最终压缩到目标维度
+            
+            nn.BatchNorm1d(s*6),                            # 参数: 2*s*6
+            nn.ReLU(),
+            nn.Conv1d(s*6, s*3, kernel_size=1)               # 参数: (s*3 * s *1) + s = 3s²+s
+        )
+
+    def forward(self, x):
+        b, _, m = x.shape
+        x = x.view(b, 3, self.s, m).permute(0, 2, 1, 3).reshape(b, 3*self.s, m)
+        x = self.net(x)
+        x = x.view(b, self.s, 3, m).permute(0, 2, 1, 3).reshape(b, 3*self.s, m)
+        return x
+
+class ResidualBlock(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.conv = nn.Sequential(
+            nn.Conv1d(channels, channels, kernel_size=3, padding=1),  # 参数: channels²*3 + channels
+            nn.BatchNorm1d(channels),
+            nn.ReLU(),
+            nn.Conv1d(channels, channels, kernel_size=3, padding=1)    # 参数: channels²*3 + channels
+        )
+    
+    def forward(self, x):
+        return x + self.conv(x)  # 残差连接
+    
+class DeepBiLSTM(nn.Module):
+    def __init__(self, s=75):  # 通过s值微调参数量
+        super().__init__()
+        self.lstm = nn.LSTM(
+            input_size = s*3,
+            hidden_size = s,  # 双向时实际输出为2s
+            num_layers = 3,   # 增加层数
+            bidirectional=True,
+            batch_first=True
+        )
+        self.adapter = nn.Linear(2*s, s*3)  # 维度适配器
+    
+    def forward(self, x):
+        x = x.permute(0, 2, 1)  # (b, m, s*3)
+        x, _ = self.lstm(x)      # (b, m, 2s)
+        x = self.adapter(x)      # (b, m, s*3)
+        return x.permute(0, 2, 1)
+
+class PreciseCNN(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.layers1 = nn.Sequential(
+            # Stage 1
+            nn.Conv1d(48, 192, 3, padding=1),  # 48*192*3 +192 = 27,840
+            nn.BatchNorm1d(192),
+            nn.ReLU(),
+            
+            # Stage 2
+            nn.Conv1d(192, 384, 3, padding=1, groups=12),  # (192/12)*384*3*12 +384 = 73,728
+            nn.Conv1d(384, 384, 1),                       # 384² +384 = 147,840
+            nn.ReLU(),
+            
+            # Stage 3
+            nn.Conv1d(384, 256, 3, padding=1),  # 384*256*3 +256 = 295,168
+            nn.Conv1d(256, 48, 1)              # 256*48 +48 = 12,336
+        )
+
+    
+    def forward(self, x):
+        return self.layers(x)
+
+class ResNetCNN(nn.Module):
+    def __init__(self, s=16):
+        super().__init__()
+        self.initial = nn.Sequential(
+            nn.Conv1d(3*s, 64, kernel_size=7, padding=3),  # 初始扩展
+            nn.BatchNorm1d(64),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=3, stride=2, padding=1)
+        )
+        
+        # 四组残差模块
+        self.layer1 = self._make_layer(64, 64, blocks=2)
+        self.layer2 = self._make_layer(64, 128, blocks=3, stride=2)
+        self.layer3 = self._make_layer(128, 256, blocks=3, stride=2)
+        self.layer4 = self._make_layer(256, 512, blocks=2, stride=2)
+        
+        # 最终压缩到s通道
+        self.final = nn.Sequential(
+            nn.AdaptiveAvgPool1d(1),
+            nn.Flatten(),
+            nn.Linear(512, s)
+        )
+
+    def _make_layer(self, in_ch, out_ch, blocks, stride=1):
+        layers = [ResBlock(in_ch, out_ch, stride)]
+        for _ in range(1, blocks):
+            layers.append(ResBlock(out_ch, out_ch))
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        x = self.initial(x)        # (b,64,m)
+        x = self.layer1(x)         # (b,64,m/2)
+        x = self.layer2(x)         # (b,128,m/4)
+        x = self.layer3(x)         # (b,256,m/8)
+        x = self.layer4(x)         # (b,512,m/16)
+        return self.final(x).unsqueeze(-1).repeat(1,1,x.shape[-1]*16)  # 恢复原始长度
+
+class ResBlock(nn.Module):
+    def __init__(self, in_ch, out_ch, stride=1):
+        super().__init__()
+        self.conv = nn.Sequential(
+            nn.Conv1d(in_ch, out_ch//4, 1, stride, bias=False),
+            nn.BatchNorm1d(out_ch//4),
+            nn.ReLU(),
+            nn.Conv1d(out_ch//4, out_ch//4, 3, padding=1, groups=16, bias=False),
+            nn.BatchNorm1d(out_ch//4),
+            nn.ReLU(),
+            nn.Conv1d(out_ch//4, out_ch, 1, bias=False),
+            nn.BatchNorm1d(out_ch)
+        )
+        self.shortcut = nn.Sequential() if in_ch == out_ch else nn.Sequential(
+            nn.Conv1d(in_ch, out_ch, 1, stride, bias=False),
+            nn.BatchNorm1d(out_ch))
+    
+    def forward(self, x):
+        return nn.ReLU()(self.conv(x) + self.shortcut(x))
+
+class HighPerfLSTM(nn.Module):
+    def __init__(self, s=16):
+        super().__init__()
+        self.s = s
+        self.lstm = nn.LSTM(
+            input_size=60,         # 输入特征维度48
+            hidden_size=128,         # 双向输出128
+            num_layers=2,
+            bidirectional=True,
+            batch_first=True,
+            dropout=0.1,
+            proj_size = 30
+        )
+        self.adaptor = nn.Sequential(
+            # nn.ReLU(),
+            nn.Linear(256, 60)       # 压缩到目标维度
+        )
+    
+    def forward(self, x):
+        # 输入维度 (b, 48, m)
+        b, _, m = x.shape
+        x = x.view(b, 3, self.s, m).permute(0, 2, 1, 3).reshape(b, 3*self.s, m)
+        
+        x, _ = self.lstm(x)         # → (b, m, 128)
+        # x = x.permute(0, 2, 1)      # → (b, m, 48)
+        # print(x.shape)
+        # x = self.adaptor(x)         # → (b, m, 16)
+        # x = x.permute(0, 2, 1)
+        x = x.view(b, self.s, 3, m).permute(0, 2, 1, 3).reshape(b, 3*self.s, m)
+        return x # → (b, 16, m)
+    
+class CompactBiLSTM(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.lstm = nn.LSTM(
+            input_size=48,
+            hidden_size=64,  # 双向输出128
+            num_layers=5,
+            bidirectional=True,
+            batch_first=True
+        )
+        self.dense = nn.Sequential(
+            nn.Linear(128, 256),  # 128*256 +256 = 33,024
+            nn.GELU(),
+            nn.Linear(256, 48)    # 256*48 +48 = 12,336
+        )
+    
+    def forward(self, x):
+        x = x.permute(0, 2, 1)
+        x, _ = self.lstm(x)
+        return self.dense(x).permute(0, 2, 1)

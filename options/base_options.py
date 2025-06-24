@@ -77,6 +77,8 @@ class BaseOptions():
         parser.add_argument('--modulation', type=str, default='OTFS', help='')
         parser.add_argument('--I', type=int, default=1, help='')
         parser.add_argument('--is_t', action='store_true', help='')
+        parser.add_argument('--is_c', action='store_true', help='cnn signal resorter')
+        parser.add_argument('--is_lstm', action='store_true', help='lstm signal resorter')
         parser.add_argument('--is_ga', action='store_true', help='')
         parser.add_argument('--is_pm', action='store_true', help='')
         parser.add_argument('--is_pb', action='store_true', help='')

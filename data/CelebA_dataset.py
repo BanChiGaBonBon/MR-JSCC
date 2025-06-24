@@ -44,7 +44,7 @@ class CelebADataset(BaseDataset):
         
         transform = transforms.Compose([
             transforms.CenterCrop((140, 140)),
-            transforms.Resize((32, 32)),
+            transforms.Resize((64, 64)),
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 

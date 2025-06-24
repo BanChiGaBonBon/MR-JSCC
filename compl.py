@@ -1,37 +1,37 @@
 import matplotlib.pyplot as plt
 import numpy as np
-# 示例数据
-d1 = '0630s32sv0snr'
-
-# data1 =dict(np.load('%s.npy'%d1,allow_pickle=True).tolist())
-data1 = {0:24.49142956756532,10:24.497510411615856,20:13.834595401628167}
-
-d2 = '1129s16m30resL25'
+d2 = 'L25.0316s16m30res'
 data2 = np.load('%s.npy'%d2,allow_pickle=True).tolist()
 
 
-d3 = '1126s16m30gatL25'
+d3 = 'L25.0316s16m30tcm'
 data3 = np.load('%s.npy'%d3,allow_pickle=True).tolist()
 
-d4 = '1127s16m30ceeqotfsL25'
+d4 = 'L25.0316s16m30ceeqotfscm'
 data4 = np.load('%s.npy'%d4,allow_pickle=True).tolist()
 
-d5 = '1129s16m30resL75'
+d5 = 'L75.0316s16m30res'
 data5 = np.load('%s.npy'%d5,allow_pickle=True).tolist()
 
-d6 = '1126s16m30gatL75'
+d6 = 'L75.0316s16m30tcm'
 data6 = np.load('%s.npy'%d6,allow_pickle=True).tolist()
 
-d7 = '1127s16m30ceeqotfsL75'
+d7 = 'L75.0316s16m30ceeqotfscm'
 data7 = np.load('%s.npy'%d7,allow_pickle=True).tolist()
-# 创建时间点（x轴）
+
+
+data8 = np.load('L25.0405s16m30ccm.npy',allow_pickle=True).tolist()
+data9 = np.load('L75.0405s16m30ccm.npy',allow_pickle=True).tolist()
+
+
+data10 = np.load('L75.0406s16m30lstmcm.npy',allow_pickle=True).tolist()
+data11 = np.load('L25.0406s16m30lstmcm.npy',allow_pickle=True).tolist()
+
 time_points = range(0,110,10)
 
-# 创建图形和轴
+
 fig, ax = plt.subplots()
 
-# 绘制第一组数据
-#  # 使用圆圈标记数据点
 
 # 绘制第二组数据
 # ax.plot(list(data1.keys()), list(data1.values()), label='BPG 2/3LDPC QPSK', marker='.') 
@@ -44,6 +44,12 @@ ax.plot(list(data5.keys())[1:11], list(data5.values())[1:11], label='DL-CE-EQ-JS
 
 ax.plot(list(data4.keys())[1:11], list(data4.values())[1:11], label='NU-CE-EQ-JSCC V=25m/s',marker='^',color='red')
 ax.plot(list(data7.keys())[1:11], list(data7.values())[1:11], label='NU-CE-EQ-JSCC V=75m/s',marker='^',ls='--',color='red')
+ax.plot(list(data4.keys())[1:11], list(data8.values())[1:11], label='cnn-JSCC V=25m/s')
+ax.plot(list(data4.keys())[1:11], list(data9.values())[1:11], label='cnn-JSCC V=75m/s')
+ax.plot(list(data4.keys())[1:11], list(data10.values())[1:11], label='lstm-JSCC V=25m/s')
+ax.plot(list(data4.keys())[1:11], list(data11.values())[1:11], label='lstm-JSCC V=25m/s')
+
+
 # 添加图例
 ax.legend()
 plt.grid(True)

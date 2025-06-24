@@ -19,6 +19,9 @@ import shutil
 from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
 import math
 import matplotlib.pyplot as plt
+import thop
+from ptflops import get_model_complexity_info
+from torchinfo import summary
 
 def seed_everything(seed=526):
     np.random.seed(seed)
@@ -80,12 +83,12 @@ SSIM_dict = {}
 lp = []
 # lpips_model = lpips.LPIPS(net='alex')
 # for v in range(-10,16,2):
-# for v in range(-4,22,2):
-    # opt.SNR=v
+for v in range(-4,22,2):
+    opt.SNR=v
 # for v in range(4,11,1):
-#     opt.L = v
-for v in range(opt.v_min,opt.v_range,opt.v_step):
-    opt.V = v
+    # opt.L = v
+# for v in range(opt.v_min,opt.v_range,opt.v_step):
+#     opt.V = v
 
     res_repeat_psnr = 0
     res_repeat_ssim = 0
@@ -120,6 +123,12 @@ for v in range(opt.v_min,opt.v_range,opt.v_step):
                     input = data['data']
                 # print(input.shape)
                 model.set_input(input)
+                flops, params = get_model_complexity_info(model, (1,3, 32, 32), as_strings=True, )
+                print(f"FLOPs: {flops}")
+                # flops, params = thop.profile(model, inputs=(input,))
+                # print(f'FLOPs: {flops}')
+                # print(f'Params: {params}')
+                summary(model, input_size=(1, 3, 32, 32))
                 model.forward()
                 fake = model.fake
                 
@@ -177,10 +186,10 @@ for v in range(opt.v_min,opt.v_range,opt.v_step):
         # print(lp_mean)
 # plt.plot(list(PSNR_OFDM.keys()), list(PSNR_OFDM.values()), label='OFDM')
 plt.plot(list(PSNR_OTFS.keys()), list(PSNR_OTFS.values()), label='OTFS')
-# for v in range(-4,22,2):
+for v in range(-4,22,2):
 # for v in range(-10,16,2):
 # for v in range(4,11,1):
-for v in range(opt.v_min,opt.v_range,opt.v_step):
+# for v in range(opt.v_min,opt.v_range,opt.v_step):
     # plt.text(v, PSNR_OFDM[v], f'({v}, {PSNR_OFDM[v]:.2f})', fontsize=6, ha='center', va='bottom')
     plt.text(v, PSNR_OTFS[v], f'({v}, {PSNR_OTFS[v]:.2f})', fontsize=6, ha='center', va='bottom')
 plt.xlabel('Velocity m/s')
@@ -188,9 +197,9 @@ plt.ylabel('PSNR')
 plt.legend()
 if opt.fig == '':
 
-    plt.savefig('%sresult.png'%opt.epoch)
-    np.save('%s.npy'%opt.epoch,PSNR_OTFS)
-    np.save('%sSSIM.npy'%opt.epoch,SSIM_dict)
+    plt.savefig(f'S{opt.V}{opt.epoch}result.png')   
+    np.save(f'S{opt.V}{opt.epoch}.npy',PSNR_OTFS)
+    np.save(f'S{opt.V}{opt.epoch}SSIM.npy',SSIM_dict)
 else:
     plt.savefig('%sresult.png'%opt.fig)
     np.save('%s.npy'%opt.fig,PSNR_OTFS)
