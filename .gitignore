@@ -179,3 +179,4 @@ cython_debug/
 celeba/
 results/
 data/cifar-10-batches-py/
+checkpoints/

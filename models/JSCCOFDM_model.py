@@ -52,27 +52,7 @@ def getG(M, N, chanEst, padLen, padType,device):
 
     pathDopplers = chanEst['pathDopplers']
     pathDelays = torch.clamp(pathDelays, 0, padLen-1)
-    # print(pathGains.shape)
-    # print(pathDelays[0,:])
-    # print(pathDopplers[0,:])
-    # print(pathGains[0,:])
-    # print(indices.shape)
-    
-    # indices = torch.arange(MN).to(device).unsqueeze(0).unsqueeze(0) - pathDelays.unsqueeze(-1)
-    # print(indices.shape)
-    # print(pathDelays.shape)
-    # exit()
-    # print(indices)
-    # phase_shift = torch.exp(1j * 2 * torch.pi / MN * pathDopplers.unsqueeze(-1) * indices)
 
-    # Scatter the contributions to the g matrix
-    # print(g.dtype)
-    # print(pathDelays.dtype)
-    # print(pathGains.dtype)
-    # print(phase_shift.dtype)
-    # print(torch.max(pathDelays))
-    # g = g.scatter_add(1, pathDelays.unsqueeze(-1).expand(-1, -1, MN), (pathGains.unsqueeze(-1) * phase_shift))
-    # g.permute(1,0,2)
     g = g.reshape(-1,MN)
     for p in range(0,padLen):
         ind = torch.arange(MN).unsqueeze(0).repeat(batch_size,1).to(device)
@@ -85,7 +65,6 @@ def getG(M, N, chanEst, padLen, padType,device):
         
         rows, cols = pathDelays.shape
 
-        # 创建一个行向量，其中每个元素为行号乘以列数
         row_offsets = torch.tensor(np.arange(rows)[:,np.newaxis]*cols).to(device)
         # print(row_offsets.shape)
         
@@ -292,7 +271,7 @@ class JSCCOFDMModel(BaseModel):
         self.real_A = image.clone().to(self.device)
         self.real_B = image.clone().to(self.device)
         
-    def forward(self,input):
+    def forward(self):
         
         N = self.real_A.shape[0]
         
@@ -456,108 +435,17 @@ class JSCCOFDMModel(BaseModel):
                     self.rx = self.equalization(self.H_est, out_sig, noise_pwr)
                     
                 elif self.opt.modulation == 'OTFS':
-                    # print((torch.abs(out_pilot[0,:,:])**2).sum())
-                    # Hdd = out_pilot.squeeze() * ((4-4j)) / (4*np.sqrt(2)+noise_pwr)
+
                     pilot = torch.fft.fft2(self.ofdm.pilot_cp[0,0,:,:])
                     # print(pilot.shape)
                     Hdd = torch.fft.fft2(out_pilot.squeeze()) * pilot.conj() / (4*np.sqrt(2)+noise_pwr)
-                    # Identify significant paths
-                    # abs_Hdd = torch.abs(Hdd)
-                    # top_k = 10
-                    # topk_vals, topk_indices = torch.topk(abs_Hdd.reshape(Hdd.size(0), -1), top_k, dim=-1)
-
-                    # # Convert flat indices to 3D indices
-                    # batch_indices = torch.arange(Hdd.size(0)).unsqueeze(1).expand(-1, top_k).flatten()
+                 
                     
-                    # topk_indices = topk_indices.flatten()
-                    # # print(Hdd.shape)
-                    # vp = (topk_indices // Hdd.size(2)).view(Hdd.size(0), top_k)
-                    # lp = (topk_indices % Hdd.size(2)).view(Hdd.size(0), top_k)
-                    # pathGains = Hdd[batch_indices,  vp.flatten(),lp.flatten()].reshape(Hdd.shape[0],-1)
-                    # x = np.linspace(0,31,32)
-                    # y = np.linspace(0,11,12)
-                    # x,y = np.meshgrid(y,x)
-                    # fig = plt.figure()
-                    # ax = fig.add_subplot(111, projection='3d')
-                    
-                    # # 绘制三维网格图
-                    # ax.plot_wireframe(x, y, abs_Hdd[0,:,:].cpu().detach().numpy(), color='blue')
-
-                    # # 设置标签
-                    # ax.set_xlabel('X Axis')
-                    # ax.set_ylabel('Y Axis')
-                    # ax.set_zlabel('Z Axis')
-                    # ax.set_title('3D Wireframe Plot')
-
-                    # # 显示图形
-                    # plt.savefig('channel.png')
-                    # plt.close()
-                    # print(lp[0,:],vp[0,:])
-                    # print(lp.flatten().shape)
-                    # Gather channel estimation data
-                    
-                    
-                    # pathGains = topk_vals.view(Hdd.size(0), top_k)
-                    # pathDelays = lp
-                    # pathDopplers = vp - 17
-                    
-                    # chanEst = {
-                    # 'pathGains': pathGains,
-                    # 'pathDelays': pathDelays,
-                    # 'pathDopplers': pathDopplers
-                    # }
-
-                    
-                    # Form G matrix using channel estimates
-                    # G = getG(self.opt.N_pilot, self.opt.S, chanEst, self.opt.K, None,device=self.device).to(torch.complex64)#.cpu()
-                    # # print(G.shape)
-                    # chOut = out_sig.reshape(N,-1)
-                    # # chOut = out_pilot.reshape(N,-1)
-                    # # Perform LMMSE equalization
-                    # rxWindow = chOut[:, :G.size(1)]#.cpu()  # Adjusting the sample size if needed
-                    # G_H = G.conj().transpose(-1, -2)#.cpu()  # Hermitian transpose of G
-                    # # print(G.shape)
-                    # # print(G_H.shape)
-                    # t = G_H @ G + noise_pwr * torch.eye(G.size(1)).to(G.device)
-                    # epsilon = 1e-6  # A small value to ensure numerical stability
-                    # # t = t + epsilon * torch.eye(t.size(-1)).to(t.device)
-                    
-                    # # print(t.shape)
-                    # # print(G_H.dtype)
-                    # # print(rxWindow.shape)
-                    # # print((G_H @ rxWindow.unsqueeze(-1)).dtype)
-                    # t2 = G_H.to(t.dtype) @ rxWindow.unsqueeze(-1).to(t.dtype)
-                    # # print(t2.shape)
-                    # # self.rx = torch.linalg.solve(t, G_H.to(t.dtype) @ rxWindow.unsqueeze(-1).to(t.dtype)).squeeze().reshape(N,self.opt.P,self.opt.S,self.opt.M)
-                    
-                    # self.rx = torch.linalg.solve(t,t2).reshape(N,self.opt.P,self.opt.S,self.opt.M)
-                    # print(Hdd.shape)
-                    # print(out_sig.shape)
-                    # Hdd = torch.fft.fft2(Hdd)
-                    # print(Hdd.shape)
                     out_sig = torch.fft.fft2(out_sig)
                     self.rx = Hdd.conj()*out_sig.squeeze()/(torch.abs(Hdd)**2+noise_pwr)
                     self.rx = torch.fft.ifft2(self.rx)
                     self.rx = self.rx.reshape(N,self.opt.P,self.opt.S,self.opt.M)
-                    # x = np.linspace(0,31,32)
-                    # y = np.linspace(0,11,12)
-                    # x,y = np.meshgrid(y,x)
-                    # fig = plt.figure()
-                    # ax = fig.add_subplot(111, projection='3d')
                     
-                    # # 绘制三维网格图
-                    # ax.plot_wireframe(x, y, torch.abs(self.rx[0,0,:,:]).cpu().detach().numpy(), color='blue')
-
-                    # # 设置标签
-                    # ax.set_xlabel('X Axis')
-                    # ax.set_ylabel('Y Axis')
-                    # ax.set_zlabel('Z Axis')
-                    # ax.set_title('3D Wireframe Plot')
-
-                    # # 显示图形
-                    # plt.savefig('rec.png')
-                    # plt.close()
-                    # print(self.rx.shape)
                     
 
                 r1 = torch.view_as_real(self.rx)
@@ -579,8 +467,6 @@ class JSCCOFDMModel(BaseModel):
                     sub1_input = torch.cat((sub11, sub12), 2).contiguous().permute(0,1,3,2,4).contiguous().view(N, -1, H, W).float()
                     sub1_output = self.netS1(sub1_input).view(N, self.opt.P, 1, 2, self.opt.S).permute(0,1,4,2,3)
                 self.H_est = self.channel_estimation(out_pilot, noise_pwr) 
-                
-                # print("est1 shape",self.H_est.shape)
                 sub11 = torch.view_as_real(self.ofdm.pilot).repeat(N,1,1,1,1)
                 sub12 = torch.view_as_real(out_pilot)
                 # sub11 = torch.cat((sub11,torch.zeros(N,1,1,32-self.opt.M,2).to(self.device)),3)
